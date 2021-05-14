@@ -47,6 +47,7 @@ public class AppController implements Initializable {
     public ListView<Beer> lvBitter;
     public ProgressIndicator piLoading;
     public ComboBox<String> cbChoose;
+    public ComboBox<String> cbDate;
     public WebView wbImage;
     public WebEngine engine;
 
@@ -170,6 +171,15 @@ public class AppController implements Initializable {
                 }).get();
     }
 
+    @FXML
+    public void dates() {
+        lvBitter.getItems().clear();
+        String selectedYear = cbDate.getSelectionModel().getSelectedItem();
+        lvBitter.setItems(beerList.stream()
+                .filter(beer -> beer.getFirst_brewed().contains(selectedYear))
+                .collect(Collectors.toCollection(FXCollections::observableArrayList)));
+    }
+
     public void putTableColumnsSw() {
         Field[] fields = Beer.class.getDeclaredFields();
         for (Field field : fields) {
@@ -182,17 +192,25 @@ public class AppController implements Initializable {
         tvData.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
-    public void loadingBeers() {
+    private void loadingBeers() {
         allBeers.clear();
         tvData.setItems(allBeers);
 
         beerService.getAllBeers()
                 .flatMap(Observable::from)
-                .doOnCompleted(() -> System.out.println("Listado completo de cervezas"))
-                .doOnError(Throwable::printStackTrace)
+                .doOnCompleted(() -> {
+                    System.out.println("Listado completo de cervezas");
+                    cbDate.setItems(beerList.stream()
+                    .map(beer -> beer.getFirst_brewed().substring(3,7))
+                    .sorted()
+                    .distinct()
+                    .collect(Collectors.toCollection(FXCollections::observableArrayList)));
+                })
+                .doOnError(throwable -> System.out.println(throwable.getMessage()))
                 .subscribeOn(Schedulers.from(Executors.newCachedThreadPool()))
-                .subscribe(b -> {allBeers.add(b);
-                beerList.add(b);
+                .subscribe(b -> {
+                    allBeers.add(b);
+                    beerList.add(b);
                 });
 
         /*beerList = allBeers;*/
@@ -212,7 +230,6 @@ public class AppController implements Initializable {
     }
 
     public void orderByDegrees() {
-
         tvData.setItems(beerList.stream()
                 .sorted(Comparator.comparing(Beer::getDegrees).reversed())
                 .collect(Collectors.toCollection(FXCollections::observableArrayList)));
@@ -231,7 +248,6 @@ public class AppController implements Initializable {
     }
 
     public void searchBeer(String name) {
-
         tvData.setItems(beerList.stream()
                 .filter(beer -> beer.getName().equalsIgnoreCase(name))
                 .distinct()
@@ -247,7 +263,7 @@ public class AppController implements Initializable {
     }
 
     public void searchBeerByBitter(float max, float min) {
-
+        lvBitter.getItems().clear();
         lvBitter.setItems(beerList.stream()
                 .filter(beer -> beer.getBitterness() >= min && beer.getBitterness() <= max)
                 .distinct()
